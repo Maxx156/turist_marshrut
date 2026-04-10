@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Турмаршрут выходного дня | Приключения в заповеднике</title>
+    <!-- Google Fonts & Font Awesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Leaflet CSS (OpenStreetMap) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f4f7fc;
+            color: #1e2a32;
+            line-height: 1.5;
+            scroll-behavior: smooth;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 1.5rem 1.2rem 2.5rem;
+        }
+
+        /* header */
+        .hero {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .hero h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1e6f5c, #289672);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+        }
+        .hero .sub {
+            color: #4a6272;
+            font-size: 1rem;
+            margin-top: 0.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 1.8rem;
+            flex-wrap: wrap;
+        }
+        .hero .sub span i {
+            margin-right: 6px;
+            color: #289672;
+        }
+
+        /* stat cards */
+        .stats-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1.2rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 2rem;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.03);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-weight: 500;
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(40, 150, 114, 0.2);
+        }
+        .stat-card i {
+            font-size: 1.6rem;
+            color: #289672;
+        }
+        .stat-card .info {
+            font-size: 0.9rem;
+        }
+        .stat-card .info strong {
+            font-size: 1.1rem;
+            color: #1e2a32;
+        }
+
+        /* map section */
+        .map-card {
+            background: white;
+            border-radius: 1.8rem;
+            overflow: hidden;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            transition: all 0.2s;
+        }
+        #route-map {
+            height: 380px;
+            width: 100%;
+            background: #d9e3e8;
+        }
+        .map-caption {
+            padding: 0.8rem 1.2rem;
+            background: #fefefe;
+            font-size: 0.8rem;
+            color: #4a6272;
+            border-top: 1px solid #e9edf2;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        /* tabs */
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 0.6rem 1.6rem;
+            cursor: pointer;
+            border-radius: 2.5rem;
+            transition: 0.2s;
+            color: #5b6e7c;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tab-btn i {
+            font-size: 1.1rem;
+        }
+        .tab-btn.active {
+            background: #289672;
+            color: white;
+            box-shadow: 0 6px 12px rgba(40, 150, 114, 0.2);
+        }
+        .tab-btn:not(.active):hover {
+            background: #eef2f5;
+            color: #1e6f5c;
+        }
+
+        /* itinerary list */
+        .itinerary-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .activity-card {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1.2rem 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 1rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.03);
+            transition: all 0.2s ease;
+            border: 1px solid #eef2f8;
+        }
+        .activity-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 26px rgba(0, 0, 0, 0.08);
+            border-color: #cbdde6;
+        }
+        .time-badge {
+            background: #eef6f2;
+            color: #1e6f5c;
+            font-weight: 700;
+            padding: 0.4rem 0.9rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            min-width: 85px;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .activity-content {
+            flex: 1;
+        }
+        .activity-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .activity-title i {
+            color: #289672;
+            font-size: 1.1rem;
+        }
+        .activity-desc {
+            color: #4a5c6b;
+            margin-top: 6px;
+            font-size: 0.9rem;
+        }
+        .activity-location {
+            font-size: 0.8rem;
+            margin-top: 8px;
+            color: #6f8f9f;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .extra-tag {
+            background: #f0f4f9;
+            padding: 0.2rem 0.8rem;
+            border-radius: 1rem;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #2c7a64;
+        }
+
+        /* footer */
+        .footer-note {
+            margin-top: 2.5rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #6c868e;
+            border-top: 1px solid #dee6ed;
+            padding-top: 1.5rem;
+        }
+        .weather-mock {
+            background: #eaf6f1;
+            border-radius: 2rem;
+            padding: 0.4rem 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 680px) {
+            .container {
+                padding: 1rem;
+            }
+            .hero h1 {
+                font-size: 1.7rem;
+            }
+            .activity-card {
+                flex-direction: column;
+            }
+            .time-badge {
+                align-self: flex-start;
+            }
+            .tab-btn {
+                padding: 0.4rem 1rem;
+                font-size: 1rem;
+            }
+            #route-map {
+                height: 260px;
+            }
+        }
+        button {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="hero">
+        <h1><i class="fas fa-hiking"></i> Лесной хребет · Маршрут выходного дня</h1>
+        <div class="sub">
+            <span><i class="fas fa-calendar-alt"></i> 10–11 мая 2025</span>
+            <span><i class="fas fa-map-marker-alt"></i> Природный парк «Семь озёр»</span>
+            <span class="weather-mock" id="weatherWidget"><i class="fas fa-sun"></i> Загрузка погоды...</span>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><i class="fas fa-route"></i><div class="info"><strong>24 км</strong><br>общая дистанция</div></div>
+        <div class="stat-card"><i class="fas fa-mountain"></i><div class="info"><strong>+560 м</strong><br>набор высоты</div></div>
+        <div class="stat-card"><i class="fas fa-clock"></i><div class="info"><strong>2 дня</strong><br>насыщенная программа</div></div>
+        <div class="stat-card"><i class="fas fa-tree"></i><div class="info"><strong>4 ключевые точки</strong><br>на карте</div></div>
+    </div>
+
+    <!-- интерактивная карта (Leaflet) -->
+    <div class="map-card">
+        <div id="route-map"></div>
+        <div class="map-caption">
+            <span><i class="fas fa-location-dot"></i> Маршрут: визит-центр → Водопадный ручей → Орлиный утёс → Старая мельница</span>
+            <span><i class="fas fa-hand-pointer"></i> Нажмите на маркер — детали</span>
+        </div>
+    </div>
+
+    <!-- табы дней -->
+    <div class="tabs">
+        <button class="tab-btn active" data-day="day1"><i class="fas fa-sun"></i> День 1 · Суббота</button>
+        <button class="tab-btn" data-day="day2"><i class="fas fa-cloud-sun"></i> День 2 · Воскресенье</button>
+    </div>
+
+    <!-- контейнер для расписания (динамический рендер) -->
+    <div id="itineraryContainer" class="itinerary-list">
+        <!-- сюда js подгрузит активности -->
+        <div style="text-align: center; padding: 2rem;"><i class="fas fa-spinner fa-pulse"></i> Загрузка программы...</div>
+    </div>
+
+    <div class="footer-note">
+        <i class="fas fa-info-circle"></i> Маршрут проверен гидами. Рекомендуем удобную треккинговую обувь и дождевик.
+        <br><button id="shareBtn" style="background: none; border: none; color: #289672; margin-top: 8px;"><i class="fas fa-share-alt"></i> Поделиться маршрутом</button>
+    </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // ---------- ДАННЫЕ МАРШРУТА (дни) ----------
+    const day1Activities = [
+        { time: "09:00", title: "Сбор группы у Визит-центра", desc: "Знакомство с гидом, выдача треккинговых палок, инструктаж. Карты и перекус.", location: "Визит-центр «Лесная сказка»", icon: "fa-people-arrows" },
+        { time: "10:15", title: "Эко-тропа «Родники»", desc: "Прогулка через смешанный лес, старые дубы и кормушки для птиц. Идеально для фото.", location: "Лесная тропа, 2.5 км", icon: "fa-leaf" },
+        { time: "12:30", title: "Обед у Водопада", desc: "Пикник на оборудованной поляне. Шум воды, свежий воздух. Можно искупаться в купели.", location: "Водопадный ручей", icon: "fa-utensils" },
+        { time: "14:45", title: "Подъём на Орлиный утёс", desc: "Набор высоты 280 м, панорама на долину и озёра. Смотровая площадка с ветрозащитой.", location: "Орлиный утёс (высшая точка)", icon: "fa-mountain" },
+        { time: "17:30", title: "Привал у лесного озера", desc: "Отдых, чай с травами, рассказы о местной фауне. Возвращение в эко-отель.", location: "Лесное озеро Светлое", icon: "fa-campground" },
+        { time: "19:30", title: "Ужин и звёздный вечер", desc: "Уютный ужин в гостевом доме. Астрономические наблюдения (если ясно).", location: "База отдыха «Причал»", icon: "fa-star" }
+    ];
+
+    const day2Activities = [
+        { time: "08:30", title: "Завтрак и сбор", desc: "Плотный завтрак, проверка снаряжения. Зарядка на свежем воздухе.", location: "База отдыха", icon: "fa-mug-hot" },
+        { time: "10:00", title: "Сплавы на байдарках", desc: "Лёгкая водная прогулка по реке Тихой. Инструктаж, жилеты. 1.5 часа.", location: "Причал на реке Тихой", icon: "fa-water" },
+        { time: "12:15", title: "Традиционный пикник", desc: "Обед у подножия скалы. Дегустация травяного чая и выпечки.", location: "Поляна Трёх сосен", icon: "fa-bread-slice" },
+        { time: "14:00", title: "Экскурсия к Старой мельнице", desc: "Историческая постройка XIX века, водяное колесо. Музей быта.", location: "Старая мельница", icon: "fa-landmark" },
+        { time: "16:20", title: "Мастер-класс по сбору трав", desc: "Фито-прогулка с ботаником. Сбор душицы и иван-чая.", location: "Луговой заповедный участок", icon: "fa-seedling" },
+        { time: "18:00", title: "Завершающее чаепитие", desc: "Подведение итогов, обмен впечатлениями. Вручение сертификатов.", location: "Гостевой дом «Причал»", icon: "fa-mug-saucer" }
+    ];
+
+    // данные для карты: основные точки (маркеры) + линия маршрута
+    const routePoints = [
+        { name: "Визит-центр", lat: 55.751244, lng: 37.618423, desc: "Старт маршрута, выдача карт" },
+        { name: "Водопадный ручей", lat: 55.7558, lng: 37.625, desc: "Живописный водопад, место пикника" },
+        { name: "Орлиный утёс", lat: 55.7602, lng: 37.6145, desc: "Смотровая площадка, вид на долину" },
+        { name: "Старая мельница", lat: 55.7485, lng: 37.6308, desc: "Исторический объект, музей" }
+    ];
+
+    // маршрут полилинии в том же порядке
+    const polylineCoords = routePoints.map(p => [p.lat, p.lng]);
+
+    // Инициализация карты (глобальная переменная для возможного использования)
+    let map;
+
+    // Функция отрисовки карты (вызывается один раз)
+    function initMap() {
+        if (map) return;
+        map = L.map('route-map').setView([55.754, 37.622], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CartoDB',
+            subdomains: 'abcd',
+            maxZoom: 18
+        }).addTo(map);
+        
+        // добавляем маркеры
+        routePoints.forEach(point => {
+            const marker = L.marker([point.lat, point.lng]).addTo(map);
+            marker.bindPopup(`
+                <b>${point.name}</b><br>${point.desc}<br>
+                <small>📍 ключевая точка маршрута</small>
+            `);
+        });
+        
+        // рисуем линию маршрута
+        const routeLine = L.polyline(polylineCoords, { color: '#289672', weight: 4, opacity: 0.7, dashArray: '8, 6' }).addTo(map);
+        // подгоняем границы карты под маршрут с отступом
+        const bounds = L.latLngBounds(polylineCoords);
+        map.fitBounds(bounds.pad(0.2));
+        
+        // добавим кастомную иконку для старта/финиша?
+        L.marker(routePoints[0], { 
+            icon: L.divIcon({ className: 'custom-start', html: '<i class="fas fa-flag-checkered" style="font-size:22px; color:#1e6f5c; background:white; border-radius:50%; padding:4px;"></i>', iconSize: [28,28] })
+        }).addTo(map).bindPopup('🏁 Точка старта');
+    }
+
+    // Рендер активностей в контейнер по выбранному дню
+    function renderItinerary(day) {
+        const container = document.getElementById('itineraryContainer');
+        if (!container) return;
+        const activities = day === 'day1' ? day1Activities : day2Activities;
+        const dayLabel = day === 'day1' ? 'суббота' : 'воскресенье';
+        
+        let html = '';
+        activities.forEach(act => {
+            html += `
+                <div class="activity-card">
+                    <div class="time-badge"><i class="far fa-clock"></i> ${act.time}</div>
+                    <div class="activity-content">
+                        <div class="activity-title">
+                            <i class="fas ${act.icon}"></i> ${act.title}
+                            <span class="extra-tag"><i class="fas fa-${day === 'day1' ? 'sun' : 'cloud-sun'}"></i> ${dayLabel}</span>
+                        </div>
+                        <div class="activity-desc">${act.desc}</div>
+                        <div class="activity-location"><i class="fas fa-map-pin"></i> ${act.location}</div>
+                    </div>
+                </div>
+            `;
+        });
+        // добавляем небольшую заметку в конце
+        html += `<div style="text-align:center; margin-top: 0.5rem; font-size:0.8rem; color:#5f7f8c;"><i class="fas fa-lightbulb"></i> Совет: не забудьте взять с собой бутылку для воды и солнцезащитный крем!</div>`;
+        container.innerHTML = html;
+    }
+
+    // Управление табами
+    let currentDay = 'day1';
+    function setupTabs() {
+        const btns = document.querySelectorAll('.tab-btn');
+        btns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const day = btn.getAttribute('data-day');
+                if (!day) return;
+                // обновляем активный класс
+                btns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentDay = day;
+                renderItinerary(currentDay);
+            });
+        });
+    }
+
+    // Погодный виджет (динамическая симуляция, но приятно)
+    function updateWeatherWidget() {
+        const weatherEl = document.getElementById('weatherWidget');
+        if (!weatherEl) return;
+        const now = new Date();
+        const month = now.getMonth();
+        // условно для мая: тепло
+        const temp = Math.floor(Math.random() * (24 - 16 + 1) + 16);
+        const conditions = ['☀️ Солнечно', '⛅ Переменная облачность', '🌤️ Малооблачно', '🍃 Легкий ветер'];
+        const randomCondition = conditions[Math.floor(Math.random() * conditions.length)];
+        weatherEl.innerHTML = `<i class="fas fa-cloud-sun"></i> ${randomCondition}, ${temp}°C • идеально для треккинга`;
+    }
+
+    // Поделиться (простой alert c копированием ссылки)
+    function setupShare() {
+        const shareBtn = document.getElementById('shareBtn');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => {
+                const text = `Турмаршрут выходного дня «Лесной хребет»: 24 км, живописные места, водопады и мельница! Подробности: ${window.location.href}`;
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'Туристический маршрут выходного дня',
+                        text: 'Идеальный план на уикенд — природа, активность и уют!',
+                        url: window.location.href,
+                    }).catch(() => alert('Маршрут можно скопировать: ' + text));
+                } else {
+                    navigator.clipboard.writeText(text).then(() => {
+                        alert('✅ Ссылка и описание маршрута скопированы! Поделитесь с друзьями.');
+                    }).catch(() => alert('Нажмите Ctrl+C, чтобы скопировать ссылку: ' + window.location.href));
+                }
+            });
+        }
+    }
+
+    // добавим небольшой эффект: при наведении на активности можно подсветить соответствующий маркер на карте? 
+    // Для улучшения UX: вешаем делегирование, но необязательно, сделаем приятный плавный скролл к карте.
+    function addSmoothScroll() {
+        const mapCard = document.querySelector('.map-card');
+        if (mapCard) {
+            mapCard.addEventListener('click', (e) => {
+                if(e.target.closest('#route-map')) return;
+                // ничего лишнего
+            });
+        }
+    }
+
+    // Инициализация при загрузке DOM
+    document.addEventListener('DOMContentLoaded', () => {
+        initMap();              // карта готова
+        renderItinerary('day1');  // по умолчанию день 1
+        setupTabs();
+        updateWeatherWidget();
+        setupShare();
+        addSmoothScroll();
+
+        // Для перестраховки: если карта не прогрузилась из-за динамики, вызываем invalidateSize при открытии любых медиа
+        window.addEventListener('resize', () => {
+            if (map) setTimeout(() => map.invalidateSize(), 100);
+        });
+        
+        // небольшая анимация: показ тултипа с картой при первом клике на таб? не нужно
+        // легенда: на карте показываем полилинию
+        console.log('Маршрут выходного дня загружен!');
+    });
+</script>
+</body>
+</html>
